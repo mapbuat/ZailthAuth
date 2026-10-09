@@ -1,25 +1,5 @@
-/*
- * Decompiled with CFR 0.152.
- * 
- * Could not load the following classes:
- *  org.bukkit.ChatColor
- *  org.bukkit.entity.Entity
- *  org.bukkit.entity.Player
- *  org.bukkit.event.EventHandler
- *  org.bukkit.event.EventPriority
- *  org.bukkit.event.Listener
- *  org.bukkit.event.block.BlockBreakEvent
- *  org.bukkit.event.block.BlockPlaceEvent
- *  org.bukkit.event.entity.EntityDamageByEntityEvent
- *  org.bukkit.event.player.PlayerCommandPreprocessEvent
- *  org.bukkit.event.player.PlayerDropItemEvent
- *  org.bukkit.event.player.PlayerInteractEvent
- *  org.bukkit.event.player.PlayerMoveEvent
- *  org.bukkit.event.player.PlayerQuitEvent
- */
 package id.zailth.auth;
 
-import id.zailth.auth.ZailthAuth;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -35,8 +15,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-public class AuthProtectionListener
-implements Listener {
+public class AuthProtectionListener implements Listener {
     private final ZailthAuth plugin;
 
     public AuthProtectionListener(ZailthAuth plugin) {
@@ -44,90 +23,104 @@ implements Listener {
     }
 
     private boolean canPlay(Player player) {
-        if (this.plugin.isBedrockPlayer(player)) {
-            return true;
-        }
-        return this.plugin.getAuthSession().isAuthenticated(player.getUniqueId());
+        return this.plugin.getAuthSession()
+                .isAuthenticated(player.getUniqueId());
     }
 
     private void sendLoginMessage(Player player) {
-        player.sendMessage(String.valueOf(ChatColor.RED) + "You must log in before you can play.");
-        player.sendMessage(String.valueOf(ChatColor.YELLOW) + "Use /login <password>");
+        player.sendMessage(ChatColor.RED
+                + "You must log in or register before you can play.");
+        if (this.plugin.isBedrockPlayer(player)
+                && !this.plugin.getAuthSession()
+                .isAuthenticated(player.getUniqueId())) {
+            player.sendMessage(ChatColor.YELLOW
+                    + "New Bedrock player? Use /register <password> <password>");
+        } else {
+            player.sendMessage(ChatColor.YELLOW
+                    + "Use /login <password>");
+        }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        if (!(this.canPlay(player) || event.getTo() == null || event.getFrom().getBlockX() == event.getTo().getBlockX() && event.getFrom().getBlockY() == event.getTo().getBlockY() && event.getFrom().getBlockZ() == event.getTo().getBlockZ())) {
+
+        if (canPlay(player) || event.getTo() == null) {
+            return;
+        }
+
+        if (event.getFrom().getBlockX() != event.getTo().getBlockX()
+                || event.getFrom().getBlockY() != event.getTo().getBlockY()
+                || event.getFrom().getBlockZ() != event.getTo().getBlockZ()) {
             event.setTo(event.getFrom());
         }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
-        Player player = event.getPlayer();
-        if (!this.canPlay(player)) {
+        if (!canPlay(event.getPlayer())) {
             event.setCancelled(true);
-            this.sendLoginMessage(player);
+            sendLoginMessage(event.getPlayer());
         }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event) {
-        Player player = event.getPlayer();
-        if (!this.canPlay(player)) {
+        if (!canPlay(event.getPlayer())) {
             event.setCancelled(true);
-            this.sendLoginMessage(player);
+            sendLoginMessage(event.getPlayer());
         }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        if (!this.canPlay(player)) {
+        if (!canPlay(event.getPlayer())) {
             event.setCancelled(true);
         }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDropItem(PlayerDropItemEvent event) {
-        Player player = event.getPlayer();
-        if (!this.canPlay(player)) {
+        if (!canPlay(event.getPlayer())) {
             event.setCancelled(true);
-            this.sendLoginMessage(player);
+            sendLoginMessage(event.getPlayer());
         }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST, ignoreCancelled=true)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamage(EntityDamageByEntityEvent event) {
-        Entity entity = event.getDamager();
-        if (!(entity instanceof Player)) {
-            return;
-        }
-        Player player = (Player)entity;
-        if (!this.canPlay(player)) {
+        Entity damager = event.getDamager();
+
+        if (damager instanceof Player player && !canPlay(player)) {
             event.setCancelled(true);
-            this.sendLoginMessage(player);
+            sendLoginMessage(player);
         }
     }
 
-    @EventHandler(priority=EventPriority.HIGHEST)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
-        if (this.canPlay(player)) {
+
+        if (canPlay(player)) {
             return;
         }
+
         String message = event.getMessage().toLowerCase();
-        if (message.startsWith("/login ") || message.equals("/login") || message.startsWith("/register ") || message.equals("/register")) {
+
+        if (message.equals("/login")
+                || message.startsWith("/login ")
+                || message.equals("/register")
+                || message.startsWith("/register ")) {
             return;
         }
+
         event.setCancelled(true);
-        this.sendLoginMessage(player);
+        sendLoginMessage(player);
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
-        this.plugin.getAuthSession().logout(event.getPlayer().getUniqueId());
+        this.plugin.getAuthSession()
+                .logout(event.getPlayer().getUniqueId());
     }
 }
-
