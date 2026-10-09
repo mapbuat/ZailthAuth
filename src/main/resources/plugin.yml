@@ -1,0 +1,28 @@
+name: ZailthAuth
+version: 1.0.0
+main: id.zailth.auth.ZailthAuth
+api-version: '1.21'
+author: Zailth
+description: Custom authentication plugin for Zailth SMP
+
+depend:
+  - floodgate
+
+commands:
+  register:
+    description: Register your account
+    usage: /register <password> <password>
+
+  login:
+    description: Login to your account
+    usage: /login <password>
+
+  auth:
+    description: ZailthAuth administration command
+    usage: /auth reset <player>
+    permission: zailthauth.admin
+
+permissions:
+  zailthauth.admin:
+    description: Access to ZailthAuth admin commands
+    default: op
